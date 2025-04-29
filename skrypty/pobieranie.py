@@ -5,6 +5,7 @@ import datetime
 import zipfile
 import io
 import os
+import opoznienie as opoz
 
 
 def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.DataFrame()):
@@ -47,6 +48,7 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
 
     previous_df_positions=df_positions.copy()
 
+    opoz.opoznienie(previous_df_positions)
 
     feed = gtfs_realtime_pb2.FeedMessage()
     response = requests.get('https://gtfs.ztp.krakow.pl/TripUpdates_A.pb')
@@ -89,7 +91,6 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
 
 
     return (previous_df_positions,previous_df_updates)
-
 
 def pobranie_rozkladu():
     r=requests.get('https://gtfs.ztp.krakow.pl/GTFS_KRK_A.zip',stream=True)

@@ -12,7 +12,7 @@ schedule_1day=sched.scheduler(time.time,time.sleep)
 def petla_15_sekund(schedule,old_positions,old_updates,cnt):
     (positions_old,updates_old)=pob.pobranie_danych(old_positions,old_updates)
     cnt+=1
-    if cnt==3:
+    if cnt==1440:
         pob.pobranie_rozkladu()
         cnt=0
     schedule.enter(15,1,petla_15_sekund,(schedule,positions_old,updates_old,cnt))
