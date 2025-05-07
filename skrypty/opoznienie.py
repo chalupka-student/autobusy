@@ -1,29 +1,28 @@
 import pandas as pd
+import numpy as np
 from google.transit import gtfs_realtime_pb2
 import requests
 import datetime
 import os
 
 def opoznienie(positions_df):
-    ref_df=pd.read_csv('data/rozklad/stop_times.txt',delimiter=',')
-
-    ref_df['arrival_seconds'] = ref_df['arrival_time'].apply(lambda x: 
-        sum(int(a) * b for a, b in zip(x.split(':'), [3600, 60, 1])))
-
-    # Klucz do połączenia: trip_id + stop_id
-    merged = pd.merge(
-        positions_df,
-        ref_df[['trip_id', 'stop_id', 'arrival_seconds']],
-        on=['trip_id', 'stop_id'],
-        how='left'
-    )
-    print(merged.head())
-
-    # Konwersja timestamp z pozycji na datetime + sekundy od północy
+    rozklad=pd.read_csv('data/rozklad/stop_times.txt',delimiter=',')
+    merged = pd.merge(positions_df,rozklad[['trip_id', 'stop_id', 'departure_time','stop_sequence']],on=['trip_id', 'stop_id','stop_sequence'],how='left')
     merged['timestamp'] = pd.to_datetime(merged['timestamp'])
-    merged['actual_seconds'] = merged['timestamp'].dt.hour * 3600 + merged['timestamp'].dt.minute * 60 + merged['timestamp'].dt.second
+    merged['planned_departure'] = merged.apply(lambda row: parse_departure_time(row['departure_time'], row['timestamp']) 
+                                               if pd.notnull(row['departure_time']) else pd.NaT,axis=1)
+    merged['delay_sec'] = (merged['timestamp'] - merged['planned_departure']).dt.total_seconds()
+    return merged
 
-    # Obliczanie opóźnienia w sekundach
-    merged['delay_seconds'] = merged['actual_seconds'] - merged['arrival_seconds']
 
+def parse_departure_time(departure_time_str, timestamp):
+    h, m, s = map(int, departure_time_str.split(':'))
+    departure_time = datetime.timedelta(hours=h, minutes=m, seconds=s)
+    day_start = datetime.datetime.combine(timestamp.date(), datetime.datetime.min.time())
+    planned_time = day_start + departure_time
+    if abs((timestamp - planned_time).total_seconds()) > 12 * 3600:
+        planned_time -= datetime.timedelta(days=1)
     
+    return planned_time
+
+

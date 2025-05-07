@@ -28,7 +28,7 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
                     'speed': vehicle.position.speed,
                     'timestamp': datetime.datetime.fromtimestamp(vehicle.timestamp),
                     'stop_id':vehicle.stop_id,
-                    'current_stop_sequence':vehicle.current_stop_sequence,
+                    'stop_sequence':vehicle.current_stop_sequence,
                     'current_status': vehicle.current_status,
                     'current_date': datetime.date.today(),
                     'day': datetime.date.today().isoweekday()
@@ -48,7 +48,6 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
 
     previous_df_positions=df_positions.copy()
 
-    opoz.opoznienie(previous_df_positions)
 
     feed = gtfs_realtime_pb2.FeedMessage()
     response = requests.get('https://gtfs.ztp.krakow.pl/TripUpdates_A.pb')
@@ -87,7 +86,12 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
     
     previous_df_updates=df_updates.copy()
 
+    delays=opoz.opoznienie(previous_df_positions)
+    delays.to_csv('data/opoznienia/delays.csv',mode='a',index=False,header=0)
 
+    delays_short=delays[['vehicle_id','trip_id','stop_sequence','current_status','day', 'planned_departure','timestamp','delay_sec']]
+    delays_short['delay_min']=delays_short['delay_sec']/60
+    delays_short.to_csv('data/opoznienia/delays_short.csv',mode='a',index=False,header=0)
 
 
     return (previous_df_positions,previous_df_updates)
@@ -98,3 +102,10 @@ def pobranie_rozkladu():
     os.makedirs('data/rozklad',exist_ok=True)
     print('pobrano rozklad')
     z.extractall('data/rozklad')
+
+
+def remove_duplicates_from_file(path, subset_cols=None):
+    df = pd.read_csv(path)
+    df_cleaned = df.drop_duplicates(subset=subset_cols)
+    df_cleaned.to_csv(path, index=False)
+    print(f"{path} cleaned.")

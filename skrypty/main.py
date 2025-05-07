@@ -2,26 +2,43 @@ import pobieranie as pob
 import time
 import sched
 import pandas as pd
+import datetime
+import os
 
-cnt=0
+HOURLY_FLAG = 'last_hourly_run.txt'
 
 schedule=sched.scheduler(time.time,time.sleep)
 
-schedule_1day=sched.scheduler(time.time,time.sleep)
 
-def petla_15_sekund(schedule,old_positions,old_updates,cnt):
+def petla_15_sekund(schedule,old_positions,old_updates):
     (positions_old,updates_old)=pob.pobranie_danych(old_positions,old_updates)
-    cnt+=1
-    if cnt==1440:
-        pob.pobranie_rozkladu()
-        cnt=0
-    schedule.enter(15,1,petla_15_sekund,(schedule,positions_old,updates_old,cnt))
-    
+    check_hourly_trigger()
+    schedule.enter(10,1,petla_15_sekund,(schedule,positions_old,updates_old))
 
 
+def hourly_tasks():
+    pob.pobranie_rozkladu()
+    pob.remove_duplicates_from_file('data/opoznienia/delays.csv')
+    pob.remove_duplicates_from_file('data/opoznienia/delays_short.csv')
+    print(f"[HOURLY] Tasks done at {datetime.datetime.now()}")
 
 
-test=pd.DataFrame()
+def check_hourly_trigger():
+    now = datetime.datetime.now()
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
 
-petla_15_sekund(schedule,test,test,cnt)
+    if os.path.exists(HOURLY_FLAG):
+        with open(HOURLY_FLAG, 'r') as f:
+            last_run = datetime.datetime.fromisoformat(f.read().strip())
+    else:
+        last_run = datetime.datetime.min
+
+    if current_hour > last_run:
+        hourly_tasks()
+        with open(HOURLY_FLAG, 'w') as f:
+            f.write(current_hour.isoformat())
+
+empty=pd.DataFrame()
+
+petla_15_sekund(schedule,empty,empty)
 schedule.run()
