@@ -49,50 +49,54 @@ def pobranie_danych(old_frame_positions=pd.DataFrame(),old_frame_updates=pd.Data
     previous_df_positions=df_positions.copy()
 
 
-    feed = gtfs_realtime_pb2.FeedMessage()
-    response = requests.get('https://gtfs.ztp.krakow.pl/TripUpdates_A.pb')
-    feed.ParseFromString(response.content)
-    updates=[]
-    for entity in feed.entity:
-        if entity.HasField('trip_update'):
-            trip_update = entity.trip_update
-            trip_id = trip_update.trip.trip_id
+    # feed = gtfs_realtime_pb2.FeedMessage()
+    # response = requests.get('https://gtfs.ztp.krakow.pl/TripUpdates_A.pb')
+    # feed.ParseFromString(response.content)
+    # updates=[]
+    # for entity in feed.entity:
+    #     if entity.HasField('trip_update'):
+    #         trip_update = entity.trip_update
+    #         trip_id = trip_update.trip.trip_id
 
-            for stu in trip_update.stop_time_update:
-                update = {
-                    'trip_id': trip_id,
-                    'stop_id': stu.stop_id,
-                    'arrival_time': None,
-                    'departure_time': None,
-                    'timestamp': datetime.datetime.now()
-                }
-                if stu.HasField('arrival'):
-                    update['arrival_time'] = datetime.datetime.fromtimestamp(stu.arrival.time)
-                if stu.HasField('departure'):
-                    update['departure_time'] = datetime.datetime.fromtimestamp(stu.departure.time)
+    #         for stu in trip_update.stop_time_update:
+    #             update = {
+    #                 'trip_id': trip_id,
+    #                 'stop_id': stu.stop_id,
+    #                 'arrival_time': None,
+    #                 'departure_time': None,
+    #                 'timestamp': datetime.datetime.now()
+    #             }
+    #             if stu.HasField('arrival'):
+    #                 update['arrival_time'] = datetime.datetime.fromtimestamp(stu.arrival.time)
+    #             if stu.HasField('departure'):
+    #                 update['departure_time'] = datetime.datetime.fromtimestamp(stu.departure.time)
 
-                updates.append(update)
+    #             updates.append(update)
 
-    df_updates = pd.DataFrame(updates)
-    previous_df_updates=old_frame_updates.copy()
+    # df_updates = pd.DataFrame(updates)
+    # previous_df_updates=old_frame_updates.copy()
 
-    try:
-        pd.testing.assert_frame_equal(df_updates,previous_df_updates)
-    except(AssertionError):
-        os.makedirs('data/updates',exist_ok=True)
-        print(f'nowe dane opoznien {datetime.datetime.now()}')
-        name=f'data/updates/trip_updates_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}.csv'
-        df_updates.to_csv(name, index=False)
+    # try:
+    #     pd.testing.assert_frame_equal(df_updates,previous_df_updates)
+    # except(AssertionError):
+    #     os.makedirs('data/updates',exist_ok=True)
+    #     print(f'nowe dane opoznien {datetime.datetime.now()}')
+    #     name=f'data/updates/trip_updates_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}.csv'
+    #     df_updates.to_csv(name, index=False)
     
-    previous_df_updates=df_updates.copy()
+    # previous_df_updates=df_updates.copy()
+
+    previous_df_updates=old_frame_updates
 
     delays=opoz.opoznienie(previous_df_positions)
-    delays.to_csv('data/opoznienia/delays.csv',mode='a',index=False,header=0)
+    if not delays.empty:
+        delays.to_csv('data/opoznienia/delays.csv',mode='a',index=False,header=0)
 
-    delays_short=delays[['vehicle_id','trip_id','stop_sequence','current_status','day', 'planned_departure','timestamp','delay_sec']]
-    delays_short['delay_min']=delays_short['delay_sec']/60
-    delays_short.to_csv('data/opoznienia/delays_short.csv',mode='a',index=False,header=0)
-
+        delays_short=delays[['vehicle_id','trip_id','stop_sequence','current_status','day', 'planned_departure','timestamp','delay_sec']]
+        delays_short['delay_min']=delays_short['delay_sec']/60
+        delays_short.to_csv('data/opoznienia/delays_short.csv',mode='a',index=False,header=0)
+    else:
+        print('pominieto puste opoznienia')
 
     return (previous_df_positions,previous_df_updates)
 
@@ -107,5 +111,6 @@ def pobranie_rozkladu():
 def remove_duplicates_from_file(path, subset_cols=None):
     df = pd.read_csv(path)
     df_cleaned = df.drop_duplicates(subset=subset_cols)
+    df_cleaned=df_cleaned.dropna(subset=['planned_departure', 'delay_sec'])
     df_cleaned.to_csv(path, index=False)
     print(f"{path} cleaned.")
