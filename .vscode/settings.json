@@ -1,0 +1,6 @@
+{
+    "diffEditor.codeLens": true,
+    "diffEditor.experimental.showEmptyDecorations": true,
+    "editor.minimap.enabled": true,
+    "editor.minimap.showSlider": "always"
+}
