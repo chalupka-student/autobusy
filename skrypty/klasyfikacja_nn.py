@@ -106,7 +106,7 @@ def klasyfikacja_nn(df_name, classification=True, epochs=30, batch_size=256, lr=
         for x_cat, x_num, yb in train_loader:
             x_cat, x_num, yb = x_cat.to(device), x_num.to(device), yb.to(device)
             optimizer.zero_grad()
-            preds = model(x_cat, x_num).view(-1)
+            preds = model(x_cat, x_num)
             loss = criterion(preds, yb) if not classification else criterion(preds, yb.long())
             loss.backward()
             optimizer.step()
@@ -119,7 +119,7 @@ def klasyfikacja_nn(df_name, classification=True, epochs=30, batch_size=256, lr=
         with torch.no_grad():
             for x_cat, x_num, yb in test_loader:
                 x_cat, x_num, yb = x_cat.to(device), x_num.to(device), yb.to(device)
-                preds = model(x_cat, x_num).squeeze()
+                preds = model(x_cat, x_num)
                 loss = criterion(preds, yb) if not classification else criterion(preds, yb.long())
                 total_test_loss += loss.item()
         avg_test_loss = total_test_loss / len(test_loader)
@@ -140,7 +140,7 @@ def klasyfikacja_nn(df_name, classification=True, epochs=30, batch_size=256, lr=
                 x_cat, x_num = x_cat.to(device), x_num.to(device)
 
                 # predykcja
-                preds = model(x_cat, x_num).squeeze().cpu().numpy()
+                preds = model(x_cat, x_num).argmax(dim=1).cpu().numpy()
                 preds_list.extend(preds)
 
                 # prawdziwe wartości
@@ -169,6 +169,14 @@ def klasyfikacja_nn(df_name, classification=True, epochs=30, batch_size=256, lr=
         "label_encoders": label_encoders,
         "scaler": scaler
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -269,7 +277,7 @@ def klasyfikacja_nn_cv(df_name, classification=True, epochs=30, batch_size=256, 
             for x_cat, x_num, yb in train_loader:
                 x_cat, x_num, yb = x_cat.to(device), x_num.to(device), yb.to(device)
                 optimizer.zero_grad()
-                preds = model(x_cat, x_num).squeeze()
+                preds = model(x_cat, x_num)
                 loss = criterion(preds, yb) if not classification else criterion(preds, yb.long())
                 loss.backward()
                 optimizer.step()
@@ -305,9 +313,7 @@ def klasyfikacja_nn_cv(df_name, classification=True, epochs=30, batch_size=256, 
 
                 # predykcja
                 preds = model(x_cat, x_num)
-                if not classification:
-                    preds = preds.view(-1)   # wymuszamy kształt (batch,)
-                preds_np = preds.cpu().numpy()
+                preds_np = preds.argmax(dim=1).cpu().numpy()
                 preds_list.extend(preds_np)
 
                 # prawdziwe wartości (na CPU)
