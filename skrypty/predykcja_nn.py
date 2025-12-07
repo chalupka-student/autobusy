@@ -6,11 +6,13 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
+import pickle
+import json
 
-def predykcja_nn(df_name, classification=False, epochs=30, batch_size=256, lr=1e-3):
+def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_size=256, lr=1e-3):
 
     # ---- 1. Wczytanie danych ----
-    delays_labeled = pd.read_csv(df_name)
+    delays_labeled = pd.read_csv('skrypty/'+df_name)
     if 'Unnamed: 0' in delays_labeled.columns:
         delays_labeled = delays_labeled.drop(columns='Unnamed: 0')
 
@@ -82,6 +84,8 @@ def predykcja_nn(df_name, classification=False, epochs=30, batch_size=256, lr=1e
                 nn.ReLU(),
                 nn.Linear(64, output_dim)
             )
+            print(input_dim)
+            print(output_dim)
 
         def forward(self, x_cat, x_num):
             embs = [emb(x_cat[:, i]) for i, emb in enumerate(self.embeddings)]
@@ -127,6 +131,8 @@ def predykcja_nn(df_name, classification=False, epochs=30, batch_size=256, lr=1e
         train_losses.append(avg_train_loss)
         test_losses.append(avg_test_loss)
         print(f"Epoch {epoch+1}/{epochs} | Train Loss: {avg_train_loss:.4f} | Test Loss: {avg_test_loss:.4f}")
+        with open('data/wyniki_predykcji/'+nazwa_zapisu+'.json','w',encoding='utf-8') as f:
+            json.dump(f"Epoch {epoch+1}/{epochs} | Train Loss: {avg_train_loss:.4f} | Test Loss: {avg_test_loss:.4f}",f,ensure_ascii=False,indent=4)
 
         # ---- 9. Generowanie predykcji dla zbioru testowego ----
         model.eval()
@@ -160,6 +166,12 @@ def predykcja_nn(df_name, classification=False, epochs=30, batch_size=256, lr=1e
             "y_true": y_list,
             "y_pred": preds_list})
 
+    wyniki=[train_losses,test_losses,df_results]
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    pickle.dump(wyniki,plik)
+    plik.close()
+
+
     return {
         "model": model,
         "train_losses": train_losses,
@@ -172,10 +184,15 @@ def predykcja_nn(df_name, classification=False, epochs=30, batch_size=256, lr=1e
 
 
 
-def predykcja_nn_cv(df_name, classification=False, epochs=30, batch_size=256, lr=1e-3, n_splits=5):
+
+
+
+
+
+def predykcja_nn_cv(df_name,nazwa_zapisu, classification=False, epochs=30, batch_size=256, lr=1e-3, n_splits=5):
 
     # ---- 1. Wczytanie danych ----
-    delays_labeled = pd.read_csv(df_name)
+    delays_labeled = pd.read_csv('skrypty/'+df_name)
     if 'Unnamed: 0' in delays_labeled.columns:
         delays_labeled = delays_labeled.drop(columns='Unnamed: 0')
 
@@ -276,6 +293,8 @@ def predykcja_nn_cv(df_name, classification=False, epochs=30, batch_size=256, lr
                 total_loss += loss.item()
             avg_train_loss = total_loss / len(train_loader)
             print(f'Avg train loss in epoch {epoch}:{avg_train_loss:.4f}')
+            with open('data/wyniki_predykcji/'+nazwa_zapisu+'.json','w',encoding='utf-8') as f:
+                json.dump(f'Avg train loss in epoch {epoch}:{avg_train_loss:.4f}',f,ensure_ascii=False,indent=4)
 
         model.eval()
         total_val_loss = 0
@@ -292,6 +311,9 @@ def predykcja_nn_cv(df_name, classification=False, epochs=30, batch_size=256, lr
         avg_val_loss = total_val_loss / len(val_loader)
         fold_results.append(avg_val_loss)
         print(f"Fold {fold+1} | Train loss: {avg_train_loss:.4f} | Val loss: {avg_val_loss:.4f}")
+        with open('data/wyniki_predykcji/'+nazwa_zapisu+'.json','w',encoding='utf-8') as f:
+            json.dump(f"Fold {fold+1} | Train loss: {avg_train_loss:.4f} | Val loss: {avg_val_loss:.4f}",f,ensure_ascii=False,indent=4)
+        
 
         # ---- zbieranie predykcji po batchach (używamy val_idx zamiast val_ds.indices) ----
         model.eval()
@@ -332,6 +354,18 @@ def predykcja_nn_cv(df_name, classification=False, epochs=30, batch_size=256, lr
 
     mean_loss = np.mean(fold_results)
     print(f"\nŚredni wynik cross-walidacji ({n_splits}-fold): {mean_loss:.4f}")
+    with open('data/wyniki_predykcji/'+nazwa_zapisu+'.json','w',encoding='utf-8') as f:
+            json.dump(f"\nŚredni wynik cross-walidacji ({n_splits}-fold): {mean_loss:.4f}",f,ensure_ascii=False,indent=4)
+
+    wyniki={
+        "cv_losses": fold_results,
+        "mean_cv_loss": mean_loss,
+        'fold_preds':fold_preds
+        }
+
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    pickle.dump(wyniki,plik)
+    plik.close()
 
     return {
         "cv_losses": fold_results,
