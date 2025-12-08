@@ -8,23 +8,39 @@ import pickle
 
 
 def main():
-    wyniki=klas_nn.klasyfikacja_nn('labeled_selected_routes_group_1.csv','grupa_1_klasyfikacja_bez_cv_100_epoch',epochs=100)
-    wyniki=klas_nn.klasyfikacja_nn_cv('labeled_selected_routes_group_1.csv','grupa_1_klasyfikacja_5cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn('labeled_selected_routes_group_1.csv','grupa_1_bez_cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn_cv('labeled_selected_routes_group_1.csv','grupa_1_5cv_100_epoch',epochs=100)
+    # Dla każdej grupy 1-3 oraz liczby epok (10, 20, 30, 50, 100)
+    for group in [1, 2, 3]:
+        group_file = f'labeled_selected_routes_group_{group}.csv'
+        for epochs in [10, 20, 30, 50, 100]:
+            # klasyfikacja - bez cross-walidacji
+            wyniki = klas_nn.klasyfikacja_nn(
+                group_file,
+                f'grupa_{group}_klasyfikacja_bez_cv_{epochs}_epoch',
+                epochs=epochs
+            )
+            # klasyfikacja - 5 fold cross-walidacja
+            wyniki = klas_nn.klasyfikacja_nn_cv(
+                group_file,
+                f'grupa_{group}_klasyfikacja_5cv_{epochs}_epoch',
+                epochs=epochs
+            )
+            # predykcja - bez cross-walidacji
+            wyniki = pred_nn.predykcja_nn(
+                group_file,
+                f'grupa_{group}_bez_cv_{epochs}_epoch',
+                epochs=epochs
+            )
+            # predykcja - 5 fold cross-walidacja
+            wyniki = pred_nn.predykcja_nn_cv(
+                group_file,
+                f'grupa_{group}_5cv_{epochs}_epoch',
+                epochs=epochs
+            )
 
-    wyniki=klas_nn.klasyfikacja_nn('labeled_selected_routes_group_2.csv','grupa_2_klasyfikacja_bez_cv_100_epoch',epochs=100)
-    wyniki=klas_nn.klasyfikacja_nn_cv('labeled_selected_routes_group_2.csv','grupa_2_klasyfikacja_5cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn('labeled_selected_routes_group_2.csv','grupa_2_bez_cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn_cv('labeled_selected_routes_group_2.csv','grupa_2_5cv_100_epoch',epochs=100)
 
-    wyniki=klas_nn.klasyfikacja_nn('labeled_selected_routes_group_3.csv','grupa_3_klasyfikacja_bez_cv_100_epoch',epochs=100)
-    wyniki=klas_nn.klasyfikacja_nn_cv('labeled_selected_routes_group_3.csv','grupa_3_klasyfikacja_5cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn('labeled_selected_routes_group_3.csv','grupa_3_bez_cv_100_epoch',epochs=100)
-    wyniki=pred_nn.predykcja_nn_cv('labeled_selected_routes_group_3.csv','grupa_3_5cv_100_epoch',epochs=100)
 
 def test():
-    wyniki=klas_nn.klasyfikacja_nn('labeled_selected_routes_group_1.csv','test',epochs=10)
+    # wyniki=klas_nn.klasyfikacja_nn('labeled_selected_routes_group_1.csv','test',epochs=10)
     wyniki=pred_nn.predykcja_nn('labeled_selected_routes_group_1.csv','test',epochs=10)
 
 main()

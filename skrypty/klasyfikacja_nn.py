@@ -139,6 +139,7 @@ def klasyfikacja_nn(df_name,nazwa_zapisu, classification=True, epochs=30, batch_
         preds_list = []
         y_list = []
         route_list = []
+        orig_idx_list = []
 
         
         with torch.no_grad():
@@ -157,17 +158,22 @@ def klasyfikacja_nn(df_name,nazwa_zapisu, classification=True, epochs=30, batch_
                 batch_end = batch_start + len(yb)
                 original_indices = test_ds.indices[batch_start:batch_end]
 
-                route_batch = df.iloc[original_indices]["route_name"].values
+                # jeśli chcesz oryginalne nazwy tras (stringi), weź z delays_labeled (przed enkodowaniem)
+                route_encoded = df.iloc[original_indices]["route_name"].values
+                route_batch = label_encoders["route_name"].inverse_transform(route_encoded)
+                #print(route_batch)
                 route_list.extend(route_batch)
+                orig_idx_list.extend(original_indices)
 
         # Zamiana na tablicę
         df_results = pd.DataFrame({
+            "orig_idx": orig_idx_list,
             "route_name": route_list,
             "y_true": y_list,
             "y_pred": preds_list})
 
     wyniki=[train_losses,test_losses,df_results]
-    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'wb')
     pickle.dump(wyniki,plik)
     plik.close()
 
@@ -319,6 +325,7 @@ def klasyfikacja_nn_cv(df_name,nazwa_zapisu, classification=True, epochs=30, bat
         preds_list = []
         y_list = []
         route_list = []
+        orig_idx_list = []
 
         with torch.no_grad():
             for batch_i, (x_cat, x_num, yb) in enumerate(val_loader):
@@ -337,11 +344,16 @@ def klasyfikacja_nn_cv(df_name,nazwa_zapisu, classification=True, epochs=30, bat
                 batch_end = batch_start + len(yb)   # len(yb) bo ostatni batch może być mniejszy
                 original_indices = val_idx[batch_start:batch_end]   # <-- używamy val_idx
 
+
                 # jeśli chcesz oryginalne nazwy tras (stringi), weź z delays_labeled (przed enkodowaniem)
-                route_batch = delays_labeled.iloc[original_indices]["route_name"].values
+                route_encoded = df.iloc[original_indices]["route_name"].values
+                route_batch = label_encoders["route_name"].inverse_transform(route_encoded)
+                #print(route_batch)
                 route_list.extend(route_batch)
+                orig_idx_list.extend(original_indices)
 
         df_results = pd.DataFrame({
+            "orig_idx": orig_idx_list,
             "route_name": route_list,
             "y_true": y_list,
             "y_pred": preds_list
@@ -360,7 +372,7 @@ def klasyfikacja_nn_cv(df_name,nazwa_zapisu, classification=True, epochs=30, bat
         'fold_preds':fold_preds
         }
 
-    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'wb')
     pickle.dump(wyniki,plik)
     plik.close()
 

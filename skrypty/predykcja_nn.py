@@ -53,6 +53,7 @@ def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_si
             self.X_cats = torch.tensor(X_cats, dtype=torch.long)
             self.X_nums = torch.tensor(X_nums, dtype=torch.float32)
             self.y = torch.tensor(y)
+
         def __len__(self):
             return len(self.y)
         def __getitem__(self, idx):
@@ -126,6 +127,24 @@ def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_si
                 preds = model(x_cat, x_num).squeeze()
                 loss = criterion(preds, yb) if not classification else criterion(preds, yb.long())
                 total_test_loss += loss.item()
+        # with torch.no_grad():
+        #     for batch_i, (x_cat, x_num, yb) in enumerate(test_loader):
+        #         # yb z loadera
+        #         yb_np = yb.cpu().numpy()
+        #         print("Batch", batch_i, "yb min/max:", yb_np.min(), yb_np.max(), "example yb:", yb_np[:5])
+
+        #         # Spróbuj pobrać odpowiadające indeksy z test_ds (debug)
+        #         bs = len(yb)
+        #         start = batch_i * test_loader.batch_size
+        #         end = start + bs
+        #         possible_idx_slice = test_ds.indices[start:end]
+        #         print("test_ds.indices slice (len={}): {}".format(len(possible_idx_slice), possible_idx_slice[:10]))
+
+        #         # porównanie wartości z oryginalnego df
+        #         df_vals = df.iloc[possible_idx_slice][target_col].values
+        #         print("df.iloc(...) min/max:", df_vals.min(), df_vals.max(), "example:", df_vals[:5])
+
+        #         break   # tylko pierwsza paczka do wglądu
         avg_test_loss = total_test_loss / len(test_loader)
 
         train_losses.append(avg_train_loss)
@@ -139,6 +158,7 @@ def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_si
         preds_list = []
         y_list = []
         route_list = []
+        orig_idx_list = []
 
         
         with torch.no_grad():
@@ -150,6 +170,7 @@ def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_si
                 preds_list.extend(preds)
 
                 # prawdziwe wartości
+                #print(yb.cpu().numpy().min())
                 y_list.extend(yb.cpu().numpy())
 
                 # pobieramy indeksy z datasetu i odczytujemy route_name z oryginalnego dataframe
@@ -157,17 +178,23 @@ def predykcja_nn(df_name,nazwa_zapisu, classification=False, epochs=30, batch_si
                 batch_end = batch_start + len(yb)
                 original_indices = test_ds.indices[batch_start:batch_end]
 
-                route_batch = df.iloc[original_indices]["route_name"].values
+                route_encoded = df.iloc[original_indices]["route_name"].values
+                route_batch = label_encoders["route_name"].inverse_transform(route_encoded)
+                #print(route_batch)
                 route_list.extend(route_batch)
+                orig_idx_list.extend(original_indices)
 
         # Zamiana na tablicę
         df_results = pd.DataFrame({
+            "orig_idx": orig_idx_list,
             "route_name": route_list,
             "y_true": y_list,
             "y_pred": preds_list})
+    
+    print(df_results['y_true'].min(), df_results['y_true'].max())
 
     wyniki=[train_losses,test_losses,df_results]
-    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'wb')
     pickle.dump(wyniki,plik)
     plik.close()
 
@@ -320,6 +347,7 @@ def predykcja_nn_cv(df_name,nazwa_zapisu, classification=False, epochs=30, batch
         preds_list = []
         y_list = []
         route_list = []
+        orig_idx_list = []
 
         with torch.no_grad():
             for batch_i, (x_cat, x_num, yb) in enumerate(val_loader):
@@ -341,10 +369,15 @@ def predykcja_nn_cv(df_name,nazwa_zapisu, classification=False, epochs=30, batch
                 original_indices = val_idx[batch_start:batch_end]   # <-- używamy val_idx
 
                 # jeśli chcesz oryginalne nazwy tras (stringi), weź z delays_labeled (przed enkodowaniem)
-                route_batch = delays_labeled.iloc[original_indices]["route_name"].values
+                route_encoded = df.iloc[original_indices]["route_name"].values
+                route_batch = label_encoders["route_name"].inverse_transform(route_encoded)
+                #print(route_batch)
                 route_list.extend(route_batch)
+                orig_idx_list.extend(original_indices)
+
 
         df_results = pd.DataFrame({
+            "orig_idx": orig_idx_list,
             "route_name": route_list,
             "y_true": y_list,
             "y_pred": preds_list
@@ -363,7 +396,7 @@ def predykcja_nn_cv(df_name,nazwa_zapisu, classification=False, epochs=30, batch
         'fold_preds':fold_preds
         }
 
-    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'ab')
+    plik=open('data/wyniki_predykcji/'+nazwa_zapisu,'wb')
     pickle.dump(wyniki,plik)
     plik.close()
 
